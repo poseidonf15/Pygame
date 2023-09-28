@@ -124,6 +124,8 @@ game_background_surf = pygame.image.load("sprites/background.jpg").convert()
 
 # intro stuff <>
 
+bulbul = True
+
 # variables (intro stuff)
 instructions = ["Press Enter or Click Anywhere",
                 "Press Enter or Click Anywhere",
@@ -270,7 +272,14 @@ while True:
 
     if stage == "intro": # everything that's displaying in the intro
         if active_instruction >= 2: screen.blit(magic_banana_wand_surf, magic_banana_wand_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 75)))
-        screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft = (0, screen.get_height())))
+        if not bulbul: screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft = (0, screen.get_height())))
+
+        if bulbul:
+            for x in range (0,1537,3):
+                screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft = (x - 1536, screen.get_height())))
+                time.sleep(0.001)
+                pygame.display.update()
+            bulbul = False
 
         # text animation
         if counter < text_speed * len(displaying_text):
@@ -330,10 +339,16 @@ while True:
                                              int(original_switching_cube_size * y + (original_switching_cube_size - switching_cube_size) / 2),
                                              switching_cube_size, switching_cube_size))
 
-                        time.sleep(0.05)
+                        time.sleep(0.025)
                         pygame.display.update()
                 switching_cubes_counter += 1
-            else: current_losing_screen_stage += 1
+            else:
+                for letter in range (1, len("You lose :(") + 1):
+                    screen.blit(score_font.render("You lose :("[:letter], True, "white"), score_font.render("You lose :(", True, "white").get_rect(center = (screen.get_width() / 2, screen.get_height() / 2)))
+                    time.sleep(0.7)
+                    pygame.display.update()
+                time.sleep(1)
+                current_losing_screen_stage += 1
 
         elif losing_screen_stages[current_losing_screen_stage] == "chasing":
             if not chasing[chasing_stage]["done"]:
@@ -378,7 +393,6 @@ while True:
                         current_static_animation += 1
                         current_dust_animation = static_animations[current_static_animation]["starting number"]
                     else: current_losing_screen_stage += 1
-
 
     elif stage == "level changing":
         Monkeys.house_health = original_health
