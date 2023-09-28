@@ -23,6 +23,7 @@ class Bullet(pygame.sprite.Sprite):
         if self.rect.collidepoint((self.mouse_x,self.mouse_y)):
             self.kill()
             self.remove(bullet_group)
+
         self.num += speed
         self.rect.center = (int(self.original_x + math.cos(self.angle) * self.num),int(self.original_y - math.sin(self.angle) * self.num))
 
