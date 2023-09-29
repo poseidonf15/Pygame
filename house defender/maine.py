@@ -124,7 +124,8 @@ game_background_surf = pygame.image.load("sprites/background.jpg").convert()
 
 # intro stuff <>
 
-bulbul = True
+intro_screen_stages = ["talking menu", "talking", "finish"]
+current_intro_screen_stage = 0
 
 # variables (intro stuff)
 instructions = ["Press Enter or Click Anywhere",
@@ -230,7 +231,7 @@ while True:
         if not stage == "lose" and changed_mouse and event.type == pygame.MOUSEMOTION: curser_rect.center = event.pos
 
         if stage == "intro": # intro events
-            if done and active_displaying_text >= len(displaying_texts) - 1: # checking if we finished talking to the player
+            if intro_screen_stages[current_intro_screen_stage] == "finish": # checking if we finished talking to the player
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if magic_banana_wand_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 75)).collidepoint(event.pos):
                         pygame.mouse.set_visible(False)
@@ -272,25 +273,33 @@ while True:
 
     if stage == "intro": # everything that's displaying in the intro
         if active_instruction >= 2: screen.blit(magic_banana_wand_surf, magic_banana_wand_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 75)))
-        if not bulbul: screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft = (0, screen.get_height())))
 
-        if bulbul:
+        if intro_screen_stages[current_intro_screen_stage] == "talking menu":
             for x in range (0,1537,3):
                 screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft = (x - 1536, screen.get_height())))
                 time.sleep(0.001)
                 pygame.display.update()
-            bulbul = False
+            current_intro_screen_stage += 1
 
         # text animation
-        if counter < text_speed * len(displaying_text):
-            counter += 1
-        elif counter >= text_speed * len(displaying_text):
-            what_to_do_text = score_font.render(instructions[active_instruction], True, "black")
-            screen.blit(what_to_do_text, what_to_do_text.get_rect(bottomright = (1486, screen.get_height() - 25)))
-            done = True
+        elif intro_screen_stages[current_intro_screen_stage] == "talking":
+            screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft=(0, screen.get_height())))
+            if counter < text_speed * len(displaying_text):
+                counter += 1
+            elif counter >= text_speed * len(displaying_text):
+                what_to_do_text = score_font.render(instructions[active_instruction], True, "black")
+                screen.blit(what_to_do_text, what_to_do_text.get_rect(bottomright = (1486, screen.get_height() - 25)))
+                done = True
+                if active_displaying_text >= len(displaying_texts) - 1: current_intro_screen_stage += 1
 
-        snip = score_font.render(displaying_text[0:counter//text_speed],True,"yellow")
-        screen.blit(snip,(10,screen.get_height() - 150))
+            snip = score_font.render(displaying_text[0:counter//text_speed],True,"yellow")
+            screen.blit(snip,(10,screen.get_height() - 150))
+
+        elif intro_screen_stages[current_intro_screen_stage] == "finish":
+            screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft=(0, screen.get_height())))
+            screen.blit(what_to_do_text, what_to_do_text.get_rect(bottomright = (1486, screen.get_height() - 25)))
+            snip = score_font.render(displaying_text[0:counter//text_speed],True,"yellow")
+            screen.blit(snip,(10,screen.get_height() - 150))
 
     elif stage == "game": # everything that's displaying in the game
 
@@ -347,7 +356,7 @@ while True:
                     screen.blit(score_font.render("You lose :("[:letter], True, "white"), score_font.render("You lose :(", True, "white").get_rect(center = (screen.get_width() / 2, screen.get_height() / 2)))
                     time.sleep(0.7)
                     pygame.display.update()
-                time.sleep(1)
+                time.sleep(0.06)
                 current_losing_screen_stage += 1
 
         elif losing_screen_stages[current_losing_screen_stage] == "chasing":
@@ -392,7 +401,7 @@ while True:
                     if current_static_animation + 1 < len(static_animations):
                         current_static_animation += 1
                         current_dust_animation = static_animations[current_static_animation]["starting number"]
-                    else: current_losing_screen_stage += 1
+                    # else: current_losing_screen_stage += 1
 
     elif stage == "level changing":
         Monkeys.house_health = original_health
