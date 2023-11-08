@@ -1,0 +1,9 @@
+[0, 1, 2, 3,
+ 4, 5, 6, 7,
+ 8, 9, 10, 11,
+ 12, 13, 14, 15]
+
+[0,4,8,12] A check : ->      for row in [0,4,8,12]:         stop = row + 4
+[3,7,11,15] D check : <-     for row in [3,7,11,15]:        stop = row - 4
+[0,1,2,3] W check : \/       for column in [0,1,2,3]:       stop = column + 13
+[12,13,14,15] S check : /\   for column in [12,13,14,15]:   stop = column - 13
