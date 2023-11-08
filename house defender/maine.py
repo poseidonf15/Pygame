@@ -51,6 +51,12 @@ class Monkeys(pygame.sprite.Sprite):
             self.rect = self.image.get_rect()
         self.animation += 0.25
 
+    @staticmethod
+    def reset():
+        Monkeys.house_health = original_health
+        Monkeys.counter = 0
+        Monkeys.created_counter = 0
+
     def update(self):
         if killing_rect and self.rect.colliderect(killing_rect) and self.dangerous:
             self.image = self.banana_surf
@@ -86,6 +92,94 @@ class Coins_text(pygame.sprite.Sprite):
             self.kill()
             self.remove(monkeys_group)
 
+class Level_buttons(pygame.sprite.Sprite):
+    level = 0
+    picking_point = None
+    def __init__(self,btn_x,btn_y,image, level_number):
+        super().__init__()
+
+        print(btn_x,btn_y,image, level_number)
+        self.number = level_number
+        self.image = image
+        self.rect = self.image.get_rect(topleft = (btn_x,btn_y))
+        print(self.rect)
+
+    def click(self):
+        global stage
+        Level_buttons.level = self.number
+        stage = "level changing"
+        pygame.display.update()
+
+    def update(self):
+        if Level_buttons.picking_point and self.rect.collidepoint(Level_buttons.picking_point):
+            self.click()
+
+def talking_print_skip(texts, speed):
+    global counter
+    global active_displaying_text
+    global talking_done
+    global complete_talking_done
+
+    if talking_done and active_displaying_text < len(texts) - 1: # going to the next text
+        active_displaying_text += 1
+        talking_done = False
+        counter = 0
+    elif (not talking_done) and (active_displaying_text != 0): # skipping the text
+        talking_done = True
+        counter = speed * len(texts[active_displaying_text])
+    elif active_displaying_text >= len(texts) - 2 and texts[active_displaying_text][0:counter // speed] == texts[active_displaying_text]:
+        complete_talking_done = True
+
+def talking_print(texts, instructions, speed):
+    global counter
+    global active_displaying_text
+    global talking_done
+
+    if counter < speed * len(texts[active_displaying_text]):
+        counter += 1
+    elif counter >= speed * len(texts[active_displaying_text]):
+        what_to_do_text = score_font.render(instructions[active_displaying_text], True, "black")
+        screen.blit(what_to_do_text, what_to_do_text.get_rect(bottomright=(1486, screen.get_height() - 25)))
+        talking_done = True
+
+    snip = score_font.render(texts[active_displaying_text][0:counter // speed], True, "yellow")
+    screen.blit(snip, (10, screen.get_height() - 150))
+
+def pause():
+    global stage
+    paused = True
+
+    while paused:
+
+        for pause_event in pygame.event.get():
+            if pause_event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if pause_event.type == pygame.MOUSEMOTION: curser_rect.center = pause_event.pos
+
+            if (pause_event.type == pygame.MOUSEBUTTONDOWN and play_btn_rect.colliderect(curser_rect)) or (pause_event.type == pygame.KEYDOWN and pause_event.key == pygame.K_ESCAPE):
+                paused = False
+
+            if pause_event.type == pygame.MOUSEBUTTONDOWN and map_btn_rect.colliderect(curser_rect):
+                pygame.time.set_timer(monkeys_timer,0)
+                paused = False
+                stage = "map"
+                for l in range(1, 4):
+                    level_buttons_group.add(Level_buttons(l * 100, 100, pygame.image.load(f'sprites/level{l} button.png').convert_alpha(),l))
+
+            else:
+                screen.blit(game_background_surf, (0, 0))
+                monkeys_group.draw(screen)
+                score_message()
+                screen.blit(pause_menu_surf, pause_menu_rect)
+                screen.blit(shop_btn_surf, shop_btn_rect)
+                screen.blit(map_btn_surf, map_btn_rect)
+                screen.blit(play_btn_surf, play_btn_rect)
+                screen.blit(curser_img, curser_rect)
+
+        pygame.display.update()
+        clock.tick(60)
+
 pygame.init()
 
 # main<>
@@ -99,11 +193,12 @@ text_font = pygame.font.Font("fonts/Pixeltype.ttf",25)
 score_font = pygame.font.Font("fonts/Pixeltype.ttf",50)
 level_changing_font = pygame.font.Font("fonts/Pixeltype.ttf",100)
 stages = ["intro", "game", "lose", "level changing"]
-level = 0
-stage = stages[level]
+Level_buttons.level = 0
+stage = stages[0]
 changed_mouse = False
 curser_img = pygame.image.load("sprites/banana curser.png").convert_alpha()
 curser_rect = curser_img.get_rect(center = (0,0))
+active_displaying_text = 0
 
 levels = [
     {"monkeys" : 10},
@@ -116,36 +211,33 @@ levels = [
     {"monkeys" : 50},
     {"monkeys" : 60},
     {"monkeys" : 80},
-    {"monkeys" : 100},
+    {"monkeys" : 100}
 ]
 
 # Backgrounds (main)
 game_background_surf = pygame.image.load("sprites/background.jpg").convert()
+map_background1 = pygame.image.load("sprites/levels background 1.jpg").convert()
+
+# Buttons (main)
+shop_btn_surf = pygame.image.load("sprites/shop button.png").convert_alpha()
+shop_btn_rect = shop_btn_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 100))
+
+map_btn_surf = pygame.image.load("sprites/map button.png").convert_alpha()
+map_btn_rect = map_btn_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 25))
+
+pause_btn_surf = pygame.image.load("sprites/pause button.png").convert_alpha()
+pause_btn_rect = pause_btn_surf.get_rect(topleft = (25, 10))
+
+play_btn_surf = pygame.image.load("sprites/play button.png").convert_alpha()
+play_btn_rect = play_btn_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 + 100))
+
+pause_menu_surf = pygame.image.load("sprites/pause menu.png").convert()
+pause_menu_rect = pause_menu_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2))
 
 # intro stuff <>
 
 intro_screen_stages = ["talking menu", "talking", "finish"]
 current_intro_screen_stage = 0
-
-# variables (intro stuff)
-instructions = ["Press Enter or Click Anywhere",
-                "Press Enter or Click Anywhere",
-                "Press Enter or Click Anywhere",
-                "Click the wand"]
-displaying_texts = ["Hello mighty stranger!",
-                   "Our house is getting attacked by some lunatic space monkeys.",
-                   "Your mission is to turn these monkeys into bananas by this magic wand.",
-                   "Good luck! :)"]
-active_instruction = 0
-active_displaying_text = 0
-displaying_text = displaying_texts[active_displaying_text]
-counter = 0
-text_speed = 3
-done = False
-
-# objects (intro stuff)
-what_to_do_text = score_font.render("Press Enter", True, "black")
-snip = score_font.render("",True,"yellow")
 
 talking_menu_surf = pygame.image.load("sprites/talking menu.png").convert_alpha()
 magic_banana_wand_surf = pygame.image.load("sprites/magic banana wand.png").convert_alpha()
@@ -187,7 +279,7 @@ def score_message():
 
 # lose stuff <>
 
-losing_screen_stages = ["switching", "chasing", "animation"]
+losing_screen_stages = ["switching", "talking_menu", "talking1", "chasing1", "talking2", "chasing2", "animation"]
 current_losing_screen_stage = 0
 
 # switching (lose stuff)
@@ -196,14 +288,17 @@ switching_cubes_counter = 0
 original_switching_cube_size = screen.get_width() / 16
 
 # chasing (lose stuff)
-chasing = [
-    {"done" : False, "rect" : (screen.get_width() / 4 * 3, screen.get_height() / 2), "img" : "sprites/chasing monkey.png"},
-    {"done" : False, "rect" : (screen.get_width() / 2 + screen.get_width() / 8,screen.get_height() / 2 - 200), "img" : "sprites/chasing monkey 2.png"},
-    {"done" : False, "rect" : (screen.get_width() / 2,screen.get_height() / 2), "img" : "sprites/chasing monkey 2.png"}
+chasing1 = [
+    {"done" : False, "rect" : (screen.get_width() / 4 * 3, screen.get_height() / 2), "img" : "sprites/chasing monkey.png"}
 ]
 chasing_stage = 0
 
-chasing_monkey_surf = pygame.image.load(chasing[chasing_stage]["img"]).convert_alpha()
+chasing2 = [
+    {"done" : False, "rect" : (screen.get_width() / 2 + screen.get_width() / 8,screen.get_height() / 2 - 200), "img" : "sprites/chasing monkey 2.png"},
+    {"done" : False, "rect" : (screen.get_width() / 2,screen.get_height() / 2), "img" : "sprites/chasing monkey 2.png"}
+]
+
+chasing_monkey_surf = pygame.image.load(chasing1[chasing_stage]["img"]).convert_alpha()
 chasing_monkey_rect = chasing_monkey_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2))
 
 # animation (lose stuff)
@@ -214,6 +309,8 @@ static_animations = [
 current_static_animation = 0
 current_dust_animation = 1
 
+# map stuff <>
+
 # Timers (game stuff)
 monkeys_timer = pygame.USEREVENT + 1
 chasing_timer = pygame.USEREVENT + 2
@@ -221,6 +318,9 @@ chasing_timer = pygame.USEREVENT + 2
 # Groups (game stuff)
 monkeys_group = pygame.sprite.Group()
 coins_group = pygame.sprite.Group()
+level_buttons_group = pygame.sprite.Group()
+
+print(f"width: {screen.get_width()}, height: {screen.get_height()}")
 
 while True:
     for event in pygame.event.get():
@@ -228,10 +328,20 @@ while True:
             pygame.quit()
             exit()
 
-        if not stage == "lose" and changed_mouse and event.type == pygame.MOUSEMOTION: curser_rect.center = event.pos
+        if not stage == "lose" and changed_mouse and event.type == pygame.MOUSEMOTION:
+            curser_rect.center = event.pos
+
+        if stage == "map" and event.type == pygame.MOUSEBUTTONDOWN:
+            Level_buttons.picking_point = event.pos
+        else:
+            Level_buttons.picking_point = None
+
+        if not stage == "map" and not stage == "intro" and not stage == "level changing" and not stage == "lose" and ((event.type == pygame.MOUSEBUTTONDOWN and pause_btn_rect.collidepoint(event.pos)) or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)):
+            pause()
 
         if stage == "intro": # intro events
             if intro_screen_stages[current_intro_screen_stage] == "finish": # checking if we finished talking to the player
+                # checks if the big banana wand button is clicked
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if magic_banana_wand_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 75)).collidepoint(event.pos):
                         pygame.mouse.set_visible(False)
@@ -239,27 +349,22 @@ while True:
                         level_changing_speed = 25
                         changed_mouse = True
                         stage = stages[-1]
-
+                        Level_buttons.level = 1
+            if intro_screen_stages[current_intro_screen_stage] == "finish" or active_displaying_text >= 3:
+                # checks if you hover over the banana wand to make it glow
                 if event.type == pygame.MOUSEMOTION:
-                    # making the wand glow
                     if magic_banana_wand_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 75)).collidepoint(event.pos): magic_banana_wand_surf = pygame.image.load("sprites/glowing magic banana wand.png"). convert_alpha()
                     else: magic_banana_wand_surf = pygame.image.load("sprites/magic banana wand.png").convert_alpha()
 
-            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                if event.type == pygame.MOUSEBUTTONDOWN or event.key == pygame.K_RETURN:
-                    if done and active_displaying_text < len(displaying_texts) - 1: # going to the next text
-                        active_displaying_text += 1
-                        done = False
-                        displaying_text = displaying_texts[active_displaying_text]
-                        counter = 0
-                        active_instruction += 1
-                    elif not done: # skipping the text
-                        done = True
-                        counter = text_speed * len(displaying_text)
+            if intro_screen_stages[current_intro_screen_stage] == "talking":
+
+                if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN) or event.type == pygame.MOUSEBUTTONDOWN:
+                    talking_print_skip(
+                        ["Hello mighty stranger!", "Our house is getting attacked by some lunatic space monkeys.",
+                         "Your mission is to turn these monkeys into bananas by this magic wand.", "Good luck! :)"], 3)
 
         if stage == "game": # game events
             if event.type == monkeys_timer:
-                print(Monkeys.created_counter)
                 Monkeys.created_counter += 1
                 monkeys_group.add(Monkeys())
 
@@ -267,12 +372,20 @@ while True:
                 killing_rect = (event.pos[0], event.pos[1], -25, -25)
             else: killing_rect = None
 
-        if stage == "lose": pass
+        if stage == "lose":
+            if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN) or event.type == pygame.MOUSEBUTTONDOWN:
+                if "talking1" in losing_screen_stages[current_losing_screen_stage]:
+                    talking_print_skip(["Oh no!"],3)
+                if "talking2" in losing_screen_stages[current_losing_screen_stage]:
+                    talking_print_skip(["NOOOOOOO", "The monkey took your wanddd!!!"],3)
 
-    if not (stage == "lose" and losing_screen_stages[current_losing_screen_stage] == "switching"): screen.blit(game_background_surf, (0, 0))
+    # not related to any specific stage things
+    if not (stage == "lose" and (losing_screen_stages[current_losing_screen_stage] == "switching" or losing_screen_stages[current_losing_screen_stage] == "talking2")): screen.blit(game_background_surf, (0, 0))
+    if (stage != "lose" and (losing_screen_stages[current_losing_screen_stage] != "switching" or losing_screen_stages[current_losing_screen_stage] != "talking2")) and (stage != "intro") and (stage != "level changing"):
+
+        screen.blit(pause_btn_surf, pause_btn_rect)
 
     if stage == "intro": # everything that's displaying in the intro
-        if active_instruction >= 2: screen.blit(magic_banana_wand_surf, magic_banana_wand_surf.get_rect(center = (screen.get_width() / 2, screen.get_height() / 2 - 75)))
 
         if intro_screen_stages[current_intro_screen_stage] == "talking menu":
             for x in range (0,1537,3):
@@ -280,26 +393,26 @@ while True:
                 time.sleep(0.001)
                 pygame.display.update()
             current_intro_screen_stage += 1
+            counter = 0
+            active_displaying_text = 0
+            complete_talking_done = False
+            talking_done = False
+
 
         # text animation
         elif intro_screen_stages[current_intro_screen_stage] == "talking":
             screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft=(0, screen.get_height())))
-            if counter < text_speed * len(displaying_text):
-                counter += 1
-            elif counter >= text_speed * len(displaying_text):
-                what_to_do_text = score_font.render(instructions[active_instruction], True, "black")
-                screen.blit(what_to_do_text, what_to_do_text.get_rect(bottomright = (1486, screen.get_height() - 25)))
-                done = True
-                if active_displaying_text >= len(displaying_texts) - 1: current_intro_screen_stage += 1
-
-            snip = score_font.render(displaying_text[0:counter//text_speed],True,"yellow")
-            screen.blit(snip,(10,screen.get_height() - 150))
+            talking_print(["Hello mighty stranger!", "Our house is getting attacked by some lunatic space monkeys.", "Your mission is to turn these monkeys into bananas by this magic wand.", "Good luck! :)"],
+                          ["Press Enter or Click Anywhere", "Press Enter or Click Anywhere", "Press Enter or Click Anywhere", "Click the wand"], 3)
+            if complete_talking_done:
+                current_intro_screen_stage += 1
+            if 2 <= active_displaying_text: screen.blit(magic_banana_wand_surf, magic_banana_wand_surf.get_rect(center=(screen.get_width() / 2, screen.get_height() / 2 - 75)))
 
         elif intro_screen_stages[current_intro_screen_stage] == "finish":
             screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft=(0, screen.get_height())))
-            screen.blit(what_to_do_text, what_to_do_text.get_rect(bottomright = (1486, screen.get_height() - 25)))
-            snip = score_font.render(displaying_text[0:counter//text_speed],True,"yellow")
-            screen.blit(snip,(10,screen.get_height() - 150))
+            screen.blit(magic_banana_wand_surf,magic_banana_wand_surf.get_rect(center=(screen.get_width() / 2, screen.get_height() / 2 - 75)))
+            screen.blit(score_font.render("Click the wand", True, "black"), score_font.render("Click the wand", True, "black").get_rect(bottomright = (1486, screen.get_height() - 25)))
+            screen.blit(score_font.render("Good luck! :)",True,"yellow"),(10,screen.get_height() - 150))
 
     elif stage == "game": # everything that's displaying in the game
 
@@ -318,15 +431,17 @@ while True:
         if Monkeys.house_health <= 0:
             pygame.time.set_timer(monkeys_timer,0)
             current_losing_screen_stage = 0
-            stage = stages[-2]
+            stage = "lose"
 
-        if Monkeys.created_counter >= levels[level-1]["monkeys"]: pygame.time.set_timer(monkeys_timer,0)
+        if Monkeys.created_counter >= levels[Level_buttons.level-1]["monkeys"]: pygame.time.set_timer(monkeys_timer,0)
 
-        if not interval and Monkeys.counter >= levels[level-1]["monkeys"]: interval = pygame.time.get_ticks()
+        if not interval and Monkeys.counter >= levels[Level_buttons.level-1]["monkeys"]: interval = pygame.time.get_ticks()
         if interval and (pygame.time.get_ticks() - interval >= 1000):
             level_changing_counter = 0
             level_changing_speed = 25
-            stage = stages[-1]
+            stage = "level changing"
+            Level_buttons.level += 1
+            Monkeys.reset()
 
         score_message()
 
@@ -340,7 +455,6 @@ while True:
             if switching_cubes_counter < 24:
                 for switching_cube in range (switching_cubes): # 0 - 7
                     x = switching_cubes_counter - switching_cube # 0 - 0
-                    print (f"x: {x}, counter: {switching_cubes_counter}, cube: {switching_cube}, range: {switching_cubes}")
                     if -1 < x < 17:
                         switching_cube_size = int(original_switching_cube_size * ((switching_cube + 1) / switching_cubes))
                         for y in range (9):
@@ -353,27 +467,46 @@ while True:
                 switching_cubes_counter += 1
             else:
                 for letter in range (1, len("You lose :(") + 1):
+                    if letter >= 4: letter += 1
+                    if letter >= 9: letter += 1
                     screen.blit(score_font.render("You lose :("[:letter], True, "white"), score_font.render("You lose :(", True, "white").get_rect(center = (screen.get_width() / 2, screen.get_height() / 2)))
                     time.sleep(0.7)
                     pygame.display.update()
-                time.sleep(0.06)
+                time.sleep(1.5)
                 current_losing_screen_stage += 1
 
-        elif losing_screen_stages[current_losing_screen_stage] == "chasing":
-            if not chasing[chasing_stage]["done"]:
-                chasing_angle = math.atan((chasing_monkey_rect.centery - chasing[chasing_stage]["rect"][1]) / (chasing[chasing_stage]["rect"][0] - chasing_monkey_rect.centerx))
-                if chasing[chasing_stage]["rect"][0] - chasing_monkey_rect.centerx < 0:
+        elif losing_screen_stages[current_losing_screen_stage] == "talking_menu":
+            for x in range (0,1537,3):
+                screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft = (x - 1536, screen.get_height())))
+                time.sleep(0.001)
+                pygame.display.update()
+            current_losing_screen_stage += 1
+            counter = 0
+            active_displaying_text = 0
+            complete_talking_done = False
+            talking_done = False
+
+        # text animation
+        elif losing_screen_stages[current_losing_screen_stage] == "talking1":
+            screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft=(0, screen.get_height())))
+            talking_print(["Oh no!"], ["Press Enter or Click Anywhere"], 3)
+            if complete_talking_done: current_losing_screen_stage += 1
+
+        elif losing_screen_stages[current_losing_screen_stage] == "chasing1":
+            if not chasing1[chasing_stage]["done"]:
+                chasing_angle = math.atan((chasing_monkey_rect.centery - chasing1[chasing_stage]["rect"][1]) / (chasing1[chasing_stage]["rect"][0] - chasing_monkey_rect.centerx))
+                if chasing1[chasing_stage]["rect"][0] - chasing_monkey_rect.centerx < 0:
                     chasing_angle += math.pi
                 chasing_num = 0
                 chasing_monkey_animation = 0
 
                 chasing_original_x = chasing_monkey_rect.centerx
                 chasing_original_y = chasing_monkey_rect.centery
-                chasing[chasing_stage]["done"] = True
+                chasing1[chasing_stage]["done"] = True
 
-            if chasing_monkey_rect.center[0] // 5 != chasing[chasing_stage]["rect"][0] // 5 or chasing_monkey_rect.center[1] // 5 != chasing[chasing_stage]["rect"][1] // 5:
+            if chasing_monkey_rect.center[0] // 5 != chasing1[chasing_stage]["rect"][0] // 5 or chasing_monkey_rect.center[1] // 5 != chasing1[chasing_stage]["rect"][1] // 5:
                 if chasing_stage < 1:
-                    screen.blit(curser_img, chasing[chasing_stage]["rect"])
+                    screen.blit(curser_img, chasing1[chasing_stage]["rect"])
                 if (chasing_monkey_animation * 10) % 10 == 0:
                     chasing_monkey_surf = pygame.transform.rotozoom(chasing_monkey_surf, 90, 1)
                     chasing_monkey_rect = chasing_monkey_surf.get_rect()
@@ -382,10 +515,55 @@ while True:
                 chasing_num += 5
                 chasing_monkey_rect.center = (int(chasing_original_x + math.cos(chasing_angle) * chasing_num),int(chasing_original_y - math.sin(chasing_angle) * chasing_num))
             else:
-                chasing_monkey_surf = pygame.image.load(chasing[chasing_stage]["img"]).convert_alpha()
-                if chasing_stage < len(chasing) - 1:
+                chasing_monkey_surf = pygame.image.load(chasing1[chasing_stage]["img"]).convert_alpha()
+                if chasing_stage < len(chasing1) - 1:
                     chasing_stage += 1
-                    chasing_monkey_surf = pygame.image.load(chasing[chasing_stage]["img"]).convert_alpha()
+                    chasing_monkey_surf = pygame.image.load(chasing1[chasing_stage]["img"]).convert_alpha()
+                else:
+                    chasing_stage = 0
+                    chasing_monkey_surf = pygame.image.load(chasing2[chasing_stage]["img"]).convert_alpha()
+                    chasing_monkey_rect = chasing_monkey_surf.get_rect(center = (int(chasing_original_x + math.cos(chasing_angle) * chasing_num),int(chasing_original_y - math.sin(chasing_angle) * chasing_num)))
+                    current_losing_screen_stage += 1
+                    counter = 0
+                    active_displaying_text = 0
+                    complete_talking_done = False
+                    talking_done = False
+
+            screen.blit(chasing_monkey_surf,chasing_monkey_rect)
+
+        # text animation
+        elif losing_screen_stages[current_losing_screen_stage] == "talking2":
+            screen.blit(talking_menu_surf, talking_menu_surf.get_rect(bottomleft=(0, screen.get_height())))
+            talking_print(["NOOOOOOO", "The monkey took your wanddd!!!"], ["Press Enter or Click Anywhere", "Press Enter or Click Anywhere"], 3)
+            if complete_talking_done: current_losing_screen_stage += 1
+
+        elif losing_screen_stages[current_losing_screen_stage] == "chasing2":
+            # setting the required variables
+            if not chasing2[chasing_stage]["done"]:
+                chasing_angle = math.atan((chasing_monkey_rect.centery - chasing2[chasing_stage]["rect"][1]) / (chasing2[chasing_stage]["rect"][0] - chasing_monkey_rect.centerx))
+                if chasing2[chasing_stage]["rect"][0] - chasing_monkey_rect.centerx < 0:
+                    chasing_angle += math.pi
+                chasing_num = 0
+                chasing_monkey_animation = 0
+
+                chasing_original_x = chasing_monkey_rect.centerx
+                chasing_original_y = chasing_monkey_rect.centery
+                chasing2[chasing_stage]["done"] = True
+
+            # checking if the monkey reached his final destination or not
+            if chasing_monkey_rect.center[0] // 5 != chasing2[chasing_stage]["rect"][0] // 5 or chasing_monkey_rect.center[1] // 5 != chasing2[chasing_stage]["rect"][1] // 5:
+                if (chasing_monkey_animation * 10) % 10 == 0:
+                    chasing_monkey_surf = pygame.transform.rotozoom(chasing_monkey_surf, 90, 1)
+                    chasing_monkey_rect = chasing_monkey_surf.get_rect()
+                chasing_monkey_animation += 0.25
+
+                chasing_num += 5
+                chasing_monkey_rect.center = (int(chasing_original_x + math.cos(chasing_angle) * chasing_num),int(chasing_original_y - math.sin(chasing_angle) * chasing_num))
+            else:
+                chasing_monkey_surf = pygame.image.load(chasing2[chasing_stage]["img"]).convert_alpha()
+                if chasing_stage < len(chasing2) - 1:
+                    chasing_stage += 1
+                    chasing_monkey_surf = pygame.image.load(chasing2[chasing_stage]["img"]).convert_alpha()
                 else: current_losing_screen_stage += 1
 
             screen.blit(chasing_monkey_surf,chasing_monkey_rect)
@@ -404,25 +582,28 @@ while True:
                     # else: current_losing_screen_stage += 1
 
     elif stage == "level changing":
-        Monkeys.house_health = original_health
-        Monkeys.counter = 0
-        Monkeys.created_counter = 0
 
         if level_changing_counter * level_changing_speed < screen.get_width():
             level_changing_counter += 1
         elif level_changing_counter * level_changing_speed >= screen.get_width():
-            level += 1
             time.sleep(1)
             screen.fill("black")
-            screen.blit(level_changing_font.render(f"level {level}", True, "white"), level_changing_font.render(f"level {level}", True, "white").get_rect(center = (screen.get_width() / 2, screen.get_height() / 2)))
+            screen.blit(level_changing_font.render(f"level {Level_buttons.level}", True, "white"), level_changing_font.render(f"level {Level_buttons.level}", True, "white").get_rect(center = (screen.get_width() / 2, screen.get_height() / 2)))
             pygame.display.update()
             time.sleep(2.5)
             interval = None
             stage = stages[1]
-            pygame.time.set_timer(monkeys_timer,1)
+            pygame.time.set_timer(monkeys_timer,750)
         pygame.draw.rect(screen,"black", (0,0,level_changing_counter * level_changing_speed,screen.get_height()))
 
-    if changed_mouse and not stage == "lose" and not stage == stages[-1]: screen.blit(curser_img, curser_rect) # curser displaying
+    elif stage == "map":
+        screen.blit(map_background1, (0,0))
+
+        level_buttons_group.draw(screen)
+        level_buttons_group.update()
+
+
+    if changed_mouse and not stage == "lose" and not stage == "level changing": screen.blit(curser_img, curser_rect) # curser displaying
 
     pygame.display.update()
     clock.tick(60)
